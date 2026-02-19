@@ -1,0 +1,10 @@
+{
+  "name": "BreathFree PRO",
+  "short_name": "BreathFree",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#f0f4f8",
+  "theme_color": "#0984e3",
+  "icons": [{"src": "https://cdn-icons-png.flaticon.com/512/1155/1155555.png", "sizes": "512x512", "type": "image/png"}]
+}
+
