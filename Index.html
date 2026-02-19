@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="manifest" href="manifest.json">
+    <title>BreathFree PRO</title>
+    <style>
+        :root { --bg: #f0f4f8; --card: #ffffff; --text: #2d3436; --accent: #0984e3; --success: #00b894; --danger: #d63031; }
+        body { margin: 0; font-family: -apple-system, system-ui, sans-serif; background-color: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; overflow: hidden; transition: 0.5s; }
+        .screen { flex: 1; padding: 20px; display: none; overflow-y: auto; padding-bottom: 90px; }
+        .active { display: block; }
+        .dashboard { text-align: center; padding-top: 10px; }
+        .timer-val { font-size: 4rem; font-weight: 200; margin: 10px 0; font-variant-numeric: tabular-nums; }
+        .metallic-btn {
+            width: 170px; height: 170px; border-radius: 50%; border: 10px solid #2d3436;
+            margin: 20px auto; cursor: pointer; display: flex; align-items: center; justify-content: center;
+            color: white; font-size: 1.5rem; font-weight: bold; text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            transition: all 0.5s ease; -webkit-tap-highlight-color: transparent;
+            box-shadow: 0 12px 25px rgba(0,0,0,0.3), inset 0 5px 10px rgba(255,255,255,0.3);
+        }
+        .btn-red { background: radial-gradient(circle at 35% 35%, #ff7675, #d63031 60%, #8b0000); }
+        .btn-green { background: radial-gradient(circle at 35% 35%, #55efc4, #00b894 60%, #006341); box-shadow: 0 0 30px rgba(0, 184, 148, 0.6), 0 12px 25px rgba(0,0,0,0.3); }
+        .section { background: var(--card); border-radius: 20px; padding: 15px; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .input-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        input, select { padding: 8px; border-radius: 8px; border: 1px solid #ddd; width: 100px; text-align: center; }
+        .nav { position: fixed; bottom: 0; width: 100%; height: 75px; background: var(--card); display: flex; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); }
+        .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 0.8rem; opacity: 0.5; }
+        .nav-item.active-nav { opacity: 1; color: var(--accent); font-weight: bold; }
+    </style>
+</head>
+<body id="app-body">
+    <div id="home" class="screen active">
+        <div class="dashboard">
+            <div id="savings-top" style="color: var(--success); font-weight: bold;">חיסכון: 0.00 ₪</div>
+            <div class="timer-val" id="countdown">00:00:00</div>
+            <div id="status-label" style="font-weight: 500;">מנתח נתונים...</div>
+            <div id="main-smoke-btn" class="metallic-btn btn-red" onclick="handleSmokeClick()">עשנתי</div>
+            <div id="daily-info" style="opacity: 0.7; font-size: 0.9rem;">סיגריות היום: 0 | בסיס: 43</div>
+        </div>
+    </div>
+    <div id="settings" class="screen">
+        <h2>הגדרות תוכנית</h2>
+        <div class="section">
+            <h3>נתוני בסיס (Baseline)</h3>
+            <div class="input-row"><span>כמות בסיס יומית:</span><input type="number" id="base-num" value="43" onchange="upd()"></div>
+            <div class="input-row"><span>מחיר חפיסה:</span><input type="number" id="price-num" value="42" onchange="upd()"></div>
+        </div>
+        <div class="section">
+            <h3>התראות קול אנושי</h3>
+            <div class="input-row"><span>קול פעיל:</span><input type="checkbox" id="v-on" checked onchange="upd()"></div>
+            <div class="input-row"><span>סגנון קול:</span>
+                <select id="v-style" onchange="upd()">
+                    <option value="f-asrt">נשי אסרטיבי</option>
+                    <option value="f-nat">נשי זורם</option>
+                    <option value="m-auth">גברי סמכותי</option>
+                </select>
+            </div>
+            <div class="input-row"><span>רטט:</span><input type="checkbox" id="vbr-on" checked onchange="upd()"></div>
+        </div>
+        <div class="section">
+            <h3>מקטעי זמן</h3>
+            <div id="seg-list"></div>
+            <button onclick="addSeg()" style="width:100%; padding:10px; margin-top:10px; border:1px dashed var(--accent); background:none; color:var(--accent); border-radius:10px;">+ הוסף מקטע</button>
+        </div>
+        <button onclick="switchTab('home')" style="width:100%; background:var(--accent); color:white; border:none; padding:18px; border-radius:15px; font-weight:bold;">שמור הכל ✅</button>
+    </div>
+    <div id="reports" class="screen">
+        <h2 style="text-align: center;">היסטוריה היום</h2>
+        <table style="width: 100%; text-align: center;"><tbody id="logs-body"></tbody></table>
+    </div>
+    <nav class="nav">
+        <div class="nav-item active-nav" id="n-home" onclick="switchTab('home')">🏠<span>בית</span></div>
+        <div class="nav-item" id="n-reports" onclick="switchTab('reports')">📋<span>דוחות</span></div>
+        <div class="nav-item" id="n-settings" onclick="switchTab('settings')">⚙️<span>הגדרות</span></div>
+    </nav>
+    <script>
+        let app = JSON.parse(localStorage.getItem('bf_v11_final')) || {
+            logs: [], segs: [{s:"06:00", e:"12:00", q:10}, {s:"12:00", e:"23:59", q:10}],
+            base: 43, price: 42, vOn: true, vStyle: 'f-asrt', vbr: true
+        };
+        function save() { localStorage.setItem('bf_v11_final', JSON.stringify(app)); }
+        function switchTab(id) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active-nav'));
+            document.getElementById(id).classList.add('active');
+            document.getElementById('n-' + id).classList.add('active-nav');
+            if(id === 'settings') renderSettings();
+        }
+        function renderSettings() {
+            document.getElementById('base-num').value = app.base;
+            document.getElementById('price-num').value = app.price;
+            document.getElementById('v-on').checked = app.vOn;
+            document.getElementById('vbr-on').checked = app.vbr;
+            document.getElementById('v-style').value = app.vStyle;
+            document.getElementById('seg-list').innerHTML = app.segs.map((s, i) => `
+                <div style="display:flex; gap:5px; margin-bottom:8px;">
+                    <input type="time" value="${s.s}" onchange="app.segs[${i}].s=this.value; save()">
+                    <input type="time" value="${s.e}" onchange="app.segs[${i}].e=this.value; save()">
+                    <input type="number" value="${s.q}" style="width:45px" onchange="app.segs[${i}].q=this.value; save()">
+                    <button onclick="app.segs.splice(${i},1); save(); renderSettings()" style="border:none; color:red; background:none;">✕</button>
+                </div>
+            `).join('');
+        }
+        function addSeg() { app.segs.push({s:"00:00", e:"23:59", q:5}); save(); renderSettings(); }
+        function upd() {
+            app.base = parseInt(document.getElementById('base-num').value);
+            app.price = parseFloat(document.getElementById('price-num').value);
+            app.vOn = document.getElementById('v-on').checked;
+            app.vbr = document.getElementById('vbr-on').checked;
+            app.vStyle = document.getElementById('v-style').value;
+            save(); render();
+        }
+        function announce(txt) {
+            if(!app.vOn) return;
+            const u = new SpeechSynthesisUtterance(txt);
+            u.lang = 'he-IL';
+            if(app.vStyle === 'f-asrt') { u.pitch = 0.9; u.rate = 1.1; }
+            else if(app.vStyle === 'f-nat') { u.pitch = 1.1; u.rate = 0.9; }
+            else { u.pitch = 0.6; u.rate = 0.8; }
+            window.speechSynthesis.speak(u);
+        }
+        function getIntv() {
+            const n = new Date();
+            const cur = n.getHours().toString().padStart(2,'0') + ":" + n.getMinutes().toString().padStart(2,'0');
+            const s = app.segs.find(x => cur >= x.s && cur <= x.e);
+            if(!s) return 20 * 60000;
+            const [h1, m1] = s.s.split(':').map(Number);
+            const [h2, m2] = s.e.split(':').map(Number);
+            return (((h2*60+m2)-(h1*60+m1))/s.q) * 60000;
+        }
+        function handleSmokeClick() {
+            if(app.vbr && window.navigator.vibrate) window.navigator.vibrate(70);
+            const now = new Date();
+            const last = app.logs.length > 0 ? new Date(app.logs[app.logs.length-1].t) : null;
+            const isDev = (last && (now - last) < getIntv());
+            announce(isDev ? "טרם הגיע הזמן. עצור בבקשה." : "ניתן לעשן כעת.");
+            app.logs.push({t: now.toISOString(), d: isDev});
+            save(); render();
+        }
+        function render() {
+            const today = new Date().toDateString();
+            const logs = app.logs.filter(l => new Date(l.t).toDateString() === today);
+            document.getElementById('daily-info').innerText = `סיגריות היום: ${logs.length} | בסיס: ${app.base}`;
+            const sav = (app.base - logs.length) * (app.price / 20);
+            document.getElementById('savings-top').innerText = `חיסכון היום: ${Math.max(0, sav).toFixed(2)} ₪`;
+            document.getElementById('logs-body').innerHTML = logs.map((l, i) => `
+                <tr style="color:${l.d?'red':'green'}"><td>${new Date(l.t).toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'})}</td><td>${i+1}</td><td>${l.d?'חריגה':'בזמן'}</td></tr>
+            `).reverse().join('');
+        }
+        setInterval(() => {
+            const btn = document.getElementById('main-smoke-btn');
+            const label = document.getElementById('status-label');
+            if(app.logs.length === 0) { btn.className="metallic-btn btn-green"; label.innerText="ניתן לעשן ✅"; return; }
+            const last = new Date(app.logs[app.logs.length-1].t);
+            const rem = Math.max(0, getIntv() - (Date.now() - last));
+            if (rem > 0) {
+                btn.className = "metallic-btn btn-red";
+                label.innerText = "המתן למרווח הבא";
+                const m = Math.floor(rem/60000).toString().padStart(2,'0');
+                const s = Math.floor((rem%60000)/1000).toString().padStart(2,'0');
+                document.getElementById('countdown').innerText = `00:${m}:${s}`;
+            } else {
+                btn.className = "metallic-btn btn-green";
+                label.innerText = "ניתן לעשן כעת ✅";
+                document.getElementById('countdown').innerText = "00:00:00";
+            }
+        }, 1000);
+        if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js'); }
+        window.addEventListener('load', () => { if(Notification.permission !== 'granted') Notification.requestPermission(); });
+        render();
+    </script>
+</body>
+</html>
